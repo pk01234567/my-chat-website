@@ -1,223 +1,31 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Private Chat</title>
-<style>
-  body{
-    margin:0;
-    font-family:Arial;
-    height:100vh;
-    background: linear-gradient(135deg, #2193b0, #f77062);
-    display:flex;
-  }
-
-  #users{
-    width:30%;
-    background: rgba(255,255,255,0.9);
-    padding:10px;
-    overflow-y:auto;
-    border-right: 2px solid #eee;
-  }
-
-  .user{
-    display:flex;
-    align-items:center;
-    padding:10px;
-    cursor:pointer;
-    border-radius:10px;
-    margin-bottom:8px;
-    background: linear-gradient(135deg, #4facfe, #f093fb);
-    color:#fff;
-    transition:0.3s;
-  }
-  .user:hover{
-    opacity:0.85;
-  }
-  .user img{
-    width:40px;
-    height:40px;
-    border-radius:50%;
-    margin-right:10px;
-    border:2px solid #fff;
-  }
-
-  #chatBox{
-    flex:1;
-    padding:15px;
-    display:flex;
-    flex-direction:column;
-  }
-
-  #chatBox h3{
-    color:#fff;
-    margin:0 0 10px 0;
-  }
-
-  #chat{
-    flex:1;
-    overflow-y:auto;
-    background: rgba(255,255,255,0.9);
-    padding:15px;
-    border-radius:15px;
-    box-shadow:0 5px 15px rgba(0,0,0,0.2);
-  }
-
-  .msg{
-    margin:6px 0;
-    padding:8px 12px;
-    border-radius:12px;
-    max-width:70%;
-    word-wrap:break-word;
-  }
-
-  .msg.me{
-    background: linear-gradient(135deg, #4facfe, #00f2fe);
-    color:#fff;
-    align-self:flex-end;
-  }
-
-  .msg.other{
-    background: linear-gradient(135deg, #f093fb, #f5576c);
-    color:#fff;
-    align-self:flex-start;
-  }
-
-  #input{
-    display:flex;
-    margin-top:10px;
-  }
-  #input input{
-    flex:1;
-    padding:12px;
-    border-radius:25px;
-    border:none;
-    outline:none;
-  }
-  #input button{
-    margin-left:10px;
-    padding:12px 25px;
-    border-radius:25px;
-    border:none;
-    background: linear-gradient(135deg, #4facfe, #f093fb);
-    color:#fff;
-    font-weight:bold;
-    cursor:pointer;
-  }
-</style>
+  <title>Insta Clone - Login</title>
+  <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="center">
+  <h2>InstaClone</h2>
+  <input id="name" placeholder="Name"><br>
+  <input id="user" placeholder="Username"><br>
+  <input id="pass" type="password" placeholder="Password"><br>
+  <button onclick="register()">Register</button>
+  <button onclick="login()">Login</button>
 
-<div id="users"></div>
-
-<div id="chatBox">
-  <div style="display:flex;align-items:center;justify-content:space-between;">
-  <div style="display:flex;align-items:center;">
-    <img id="myPhoto" src="" style="width:40px;height:40px;border-radius:50%;margin-right:10px;">
-    <h3 id="title">Select a user</h3>
-  </div>
-  <div>
-    <input type="file" id="dpInput" style="display:none" onchange="changeDP()">
-    <button onclick="dpInput.click()">Change DP</button>
-  </div>
-</div>
-
-  <div id="chat"></div>
-  <div id="input">
-    <input id="text" placeholder="Type...">
-    <button onclick="send()">Send</button>
-  </div>
-</div>
-
-<script src="/socket.io/socket.io.js"></script>
 <script>
-  
-  async function changeDP(){
-  const file = dpInput.files[0];
-  if(!file) return;
-
-  const fd = new FormData();
-  fd.append("photo", file);
-  fd.append("username", me);
-
-  const res = await fetch("/update-photo", {
-    method: "POST",
-    body: fd
-  });
-  const d = await res.json();
-  if(d.ok){
-    myPhoto.src = d.photo;
-    alert("Profile photo updated!");
-  }
+function register(){
+ fetch("/register",{method:"POST",headers:{'Content-Type':'application/json'},
+ body:JSON.stringify({name:name.value,username:user.value,password:pass.value})})
+ .then(r=>r.json()).then(d=>alert(d.ok?"Registered":"Error"));
 }
-
-const socket = io();
-let me = prompt("Enter your username after login:");
-const myPhoto = document.getElementById("myPhoto");
-myPhoto.src = "/default.png";
-
-fetch("/users")
-  .then(r => r.json())
-  .then(data => {
-    const u = data.find(x => x.username === me);
-    if (u && u.photo) {
-      myPhoto.src = u.photo;
-    }
-  });
-
-// load my photo
-myPhoto.src = "/default.png";
-
-fetch("/users").then(r=>r.json()).then(data=>{
-  const u = data.find(x=>x.username===me);
-  if(u && u.photo) myPhoto.src = u.photo;
-});
-
-let current = "";
-
-socket.emit("join", me);
-
-// load users
-fetch("/users").then(r=>r.json()).then(data=>{
-  data.filter(u=>u.username!==me).forEach(u=>{
-    const d=document.createElement("div");
-    d.className="user";
-    d.innerHTML=`<img src="${u.photo || '/default.png'}"><b>${u.username}</b>`;
-    d.onclick=()=>selectUser(u.username);
-    users.appendChild(d);
-  });
-});
-
-function selectUser(u){
-  current=u;
-  title.textContent="Chat with "+u;
-  chat.innerHTML="";
-  socket.emit("loadChat",{from:me,to:u});
+function login(){
+ fetch("/login",{method:"POST",headers:{'Content-Type':'application/json'},
+ body:JSON.stringify({username:user.value,password:pass.value})})
+ .then(r=>r.json()).then(d=>{
+   if(d.ok) location.href="feed.html";
+   else alert("Login failed");
+ });
 }
-
-socket.on("chatHistory", msgs=>{
-  chat.innerHTML="";
-  msgs.forEach(add);
-});
-
-socket.on("privateMessage", add);
-
-function send(){
-  if(text.value && current){
-    socket.emit("privateMessage",{from:me,to:current,text:text.value});
-    text.value="";
-  }
-}
-
-function add(m){
-  if((m.from===me && m.to===current)||(m.from===current && m.to===me)){
-    const d=document.createElement("div");
-    d.className="msg " + (m.from===me ? "me" : "other");
-    d.textContent = m.from + ": " + m.text;
-    chat.appendChild(d);
-    chat.scrollTop = chat.scrollHeight;
-  }
-}
-
 </script>
 </body>
 </html>

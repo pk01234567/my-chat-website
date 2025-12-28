@@ -13,8 +13,17 @@
   "type": "commonjs",
   "dependencies": {
     "express": "^5.2.1",
+    "express-session": "^1.18.2",
     "multer": "^2.0.2",
     "nodemailer": "^7.0.12",
     "socket.io": "^4.8.3"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pk01234567/my-chat-website.git"
+  },
+  "bugs": {
+    "url": "https://github.com/pk01234567/my-chat-website/issues"
+  },
+  "homepage": "https://github.com/pk01234567/my-chat-website#readme"
 }

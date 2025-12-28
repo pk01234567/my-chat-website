@@ -1,11 +1,26 @@
 [
   {
-    "username": "_krizx___",
-    "password": "Pavi@5450"
+    "username": "",
+    "password": "",
+    "bio": "",
+    "photo": "",
+    "followers": [],
+    "following": []
   },
   {
-    "email": "valliyuvaraja04@gmail.com",
-    "username": "valli",
-    "password": "Valli@7742"
+    "username": "_krizx_",
+    "password": "Pavi@0123",
+    "bio": "",
+    "photo": "",
+    "followers": [],
+    "following": []
+  },
+  {
+    "username": "k",
+    "password": "j",
+    "bio": "",
+    "photo": "",
+    "followers": [],
+    "following": []
   }
 ]

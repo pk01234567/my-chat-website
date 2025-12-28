@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>DM Chat</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+  <div id="msgs"></div>
+  <input id="txt" placeholder="Type message...">
+</div>
+
+<script>
+const u = new URLSearchParams(location.search).get("u");
+
+async function load(){
+  const res = await fetch("/dm/"+u);
+  const msgs = await res.json();
+  const box = document.getElementById("msgs");
+  box.innerHTML = msgs.map(m=>`
+    <div class="card" style="background:${m.from===u?'#eee':'#d1d9ff'}">
+      <b>${m.from}:</b> ${m.text}
+    </div>`).join("");
+}
+
+document.getElementById("txt").onkeydown = async e => {
+  if(e.key==="Enter"){
+    await fetch("/dm",{
+      method:"POST",
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({to:u,text:e.target.value})
+    });
+    e.target.value="";
+    load();
+  }
+};
+
+setInterval(load,1000);
+</script>
+</body>
+</html>

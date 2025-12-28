@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>User</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container" id="box"></div>
+
+<script>
+const u = new URLSearchParams(location.search).get("u");
+
+async function load(){
+  const res = await fetch("/user/"+u);
+  const d = await res.json();
+  const box = document.getElementById("box");
+
+  box.innerHTML = `
+    <div class="card profile">
+      <img src="${d.user.photo || 'https://via.placeholder.com/80'}">
+      <h3>${d.user.username}</h3>
+      <p>${d.user.bio || ""}</p>
+      <p>Followers: ${d.user.followers.length}</p>
+      <button class="btn ${d.isFollowing?'blue':''}" onclick="follow()">
+        ${d.isFollowing?'Unfollow':'Follow'}
+      </button>
+      <a class="btn blue" href="dm.html?u=${u}">DM</a>
+    </div>
+    ${d.posts.map(p=>`
+      <div class="card">
+        <img class="post-img" src="${p.image}">
+        <p>${p.caption}</p>
+      </div>`).join("")}
+  `;
+}
+
+async function follow(){
+  await fetch(d.isFollowing?"/unfollow":"/follow",{
+    method:"POST",
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({to:u})
+  });
+  load();
+}
+
+load();
+</script>
+</body>
+</html>

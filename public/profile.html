@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Profile</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="profile">
+  <img id="dp" src="" class="dp"><br>
+  <input type="file" id="dpFile"><br>
+  <button onclick="uploadDP()">Change DP</button>
+
+  <h2 id="name"></h2>
+  <p id="bio"></p>
+  <textarea id="bioEdit" placeholder="Edit bio..."></textarea><br>
+  <button onclick="saveBio()">Save Bio</button>
+
+  <p>
+    <b id="followers"></b> followers |
+    <b id="following"></b> following
+  </p>
+
+  <h3>My Posts</h3>
+  <div id="posts"></div>
+
+  <br><a href="feed.html">⬅ Back to Feed</a>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

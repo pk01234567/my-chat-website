@@ -1,133 +1,232 @@
 const express = require("express");
-const http = require("http");
-const { Server } = require("socket.io");
 const fs = require("fs");
 const multer = require("multer");
+const session = require("express-session");
 const path = require("path");
 
 const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
+const PORT = 4000;
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static("public"));
 app.use("/uploads", express.static("uploads"));
 
-const usersFile = "users.json";
-const msgFile = "messages.json";
+app.use(session({
+  secret: "insta_clone_secret",
+  resave: false,
+  saveUninitialized: true
+}));
 
-let users = fs.existsSync(usersFile) ? JSON.parse(fs.readFileSync(usersFile)) : [];
-let messages = fs.existsSync(msgFile) ? JSON.parse(fs.readFileSync(msgFile)) : [];
+const USERS_FILE = "users.json";
+const POSTS_FILE = "posts.json";
+const MSG_FILE = "messages.json";
 
-let otps = {}; // email -> otp
-let onlineUsers = {}; // username -> socket.id
+const load = f => fs.existsSync(f) ? JSON.parse(fs.readFileSync(f)) : [];
+const save = (f, d) => fs.writeFileSync(f, JSON.stringify(d, null, 2));
 
-function saveUsers() {
-  fs.writeFileSync(usersFile, JSON.stringify(users, null, 2));
-}
-function saveMsgs() {
-  fs.writeFileSync(msgFile, JSON.stringify(messages, null, 2));
-}
+if (!fs.existsSync(USERS_FILE)) save(USERS_FILE, []);
+if (!fs.existsSync(POSTS_FILE)) save(POSTS_FILE, []);
+if (!fs.existsSync(MSG_FILE)) save(MSG_FILE, []);
 
-// 📷 multer setup
 const storage = multer.diskStorage({
-  destination: "uploads/",
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname));
-  }
+  destination: "uploads",
+  filename: (req, file, cb) =>
+    cb(null, Date.now() + path.extname(file.originalname))
 });
 const upload = multer({ storage });
 
-// 📩 Send OTP (demo or with email if added)
-app.post("/send-otp", (req, res) => {
-  const { email } = req.body;
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  otps[email] = otp;
-  console.log("OTP for", email, "is:", otp);
-  res.json({ ok: true });
-});
+/* -------- AUTH -------- */
 
-// 🆕 Register with photo
-app.post("/verify-register", upload.single("photo"), (req, res) => {
-  const { email, otp, username, password } = req.body;
-
-  if (otps[email] !== otp)
-    return res.json({ ok: false, msg: "Invalid OTP" });
-
+app.post("/register", (req, res) => {
+  const { username, password, name } = req.body;
+  const users = load(USERS_FILE);
   if (users.find(u => u.username === username))
     return res.json({ ok: false, msg: "Username exists" });
 
-  const photoPath = req.file ? "/uploads/" + req.file.filename : "";
-
-  users.push({ email, username, password, photo: photoPath });
-  saveUsers();
-  delete otps[email];
-
+  users.push({
+    username,
+    password,
+    name,
+    bio: "",
+    photo: "",
+    followers: [],
+    following: []
+  });
+  save(USERS_FILE, users);
   res.json({ ok: true });
 });
 
-// 🔑 Login
 app.post("/login", (req, res) => {
   const { username, password } = req.body;
-  const user = users.find(
-    u => u.username === username && u.password === password
-  );
-  if (!user) return res.json({ ok: false, msg: "Invalid login" });
-  res.json({ ok: true, user });
+  const users = load(USERS_FILE);
+  const u = users.find(x => x.username === username && x.password === password);
+  if (!u) return res.json({ ok: false });
+  req.session.user = username;
+  res.json({ ok: true });
 });
 
-// 🔄 Update profile photo
-app.post("/update-photo", upload.single("photo"), (req, res) => {
-  const { username } = req.body;
-
-  const user = users.find(u => u.username === username);
-  if (!user) return res.json({ ok: false });
-
-  user.photo = req.file ? "/uploads/" + req.file.filename : user.photo;
-  saveUsers();
-
-  res.json({ ok: true, photo: user.photo });
+app.get("/me", (req, res) => {
+  if (!req.session.user) return res.json({ ok: false });
+  const users = load(USERS_FILE);
+  res.json({ ok: true, user: users.find(u => u.username === req.session.user) });
 });
 
+/* -------- PROFILE -------- */
 
-// 👥 Get user list
-app.get("/users", (req, res) => {
-  res.json(users.map(u => ({ username: u.username, photo: u.photo })));
+app.get("/profile", (req, res) => {
+  if (!req.session.user) return res.json({ ok: false });
+  const users = load(USERS_FILE);
+  const posts = load(POSTS_FILE);
+  const me = users.find(u => u.username === req.session.user);
+  res.json({ ok: true, user: me, posts: posts.filter(p => p.user === me.username) });
 });
 
-// 🔌 Socket private chat
-io.on("connection", socket => {
+app.post("/bio", (req, res) => {
+  const users = load(USERS_FILE);
+  const me = users.find(u => u.username === req.session.user);
+  me.bio = req.body.bio || "";
+  save(USERS_FILE, users);
+  res.json({ ok: true });
+});
 
-  socket.on("join", username => {
-    onlineUsers[username] = socket.id;
+app.post("/dp", upload.single("photo"), (req, res) => {
+  const users = load(USERS_FILE);
+  const me = users.find(u => u.username === req.session.user);
+  me.photo = "/uploads/" + req.file.filename;
+  save(USERS_FILE, users);
+  res.json({ ok: true, photo: me.photo });
+});
+
+/* -------- VIEW USER -------- */
+
+app.get("/user/:username", (req, res) => {
+  if (!req.session.user) return res.json({ ok: false });
+  const users = load(USERS_FILE);
+  const posts = load(POSTS_FILE);
+  const me = users.find(u => u.username === req.session.user);
+  const other = users.find(u => u.username === req.params.username);
+  if (!other) return res.json({ ok: false });
+
+  res.json({
+    ok: true,
+    user: other,
+    posts: posts.filter(p => p.user === other.username),
+    isFollowing: me.following.includes(other.username)
   });
-
-  socket.on("loadChat", ({ from, to }) => {
-    const chat = messages.filter(
-      m =>
-        (m.from === from && m.to === to) ||
-        (m.from === to && m.to === from)
-    );
-    socket.emit("chatHistory", chat);
-  });
-
-  socket.on("privateMessage", msg => {
-    messages.push(msg);
-    saveMsgs();
-
-    const toSocket = onlineUsers[msg.to];
-    if (toSocket) io.to(toSocket).emit("privateMessage", msg);
-    socket.emit("privateMessage", msg);
-  });
-
-  socket.on("disconnect", () => {
-    for (let u in onlineUsers) {
-      if (onlineUsers[u] === socket.id) delete onlineUsers[u];
-    }
-  });
 });
 
-server.listen(4000, () => {
-  console.log("Server running: http://localhost:4000");
+/* -------- SEARCH -------- */
+
+app.get("/search", (req, res) => {
+  const q = (req.query.q || "").toLowerCase();
+  const users = load(USERS_FILE);
+  res.json(users.filter(u => u.username.toLowerCase().includes(q)));
 });
 
+/* -------- FOLLOW / UNFOLLOW -------- */
+
+app.post("/follow", (req, res) => {
+  const { to } = req.body;
+  const users = load(USERS_FILE);
+  const me = users.find(u => u.username === req.session.user);
+  const other = users.find(u => u.username === to);
+  if (!me || !other) return res.json({ ok: false });
+
+  if (!me.following.includes(to)) me.following.push(to);
+  if (!other.followers.includes(me.username)) other.followers.push(me.username);
+  save(USERS_FILE, users);
+  res.json({ ok: true });
+});
+
+app.post("/unfollow", (req, res) => {
+  const { to } = req.body;
+  const users = load(USERS_FILE);
+  const me = users.find(u => u.username === req.session.user);
+  const other = users.find(u => u.username === to);
+
+  me.following = me.following.filter(u => u !== to);
+  other.followers = other.followers.filter(u => u !== me.username);
+  save(USERS_FILE, users);
+  res.json({ ok: true });
+});
+
+app.get("/followers/:u", (req, res) => {
+  const users = load(USERS_FILE);
+  const u = users.find(x => x.username === req.params.u);
+  res.json(u ? u.followers : []);
+});
+
+/* -------- POSTS -------- */
+
+app.post("/post", upload.single("image"), (req, res) => {
+  const posts = load(POSTS_FILE);
+  posts.unshift({
+    id: Date.now(),
+    user: req.session.user,
+    image: "/uploads/" + req.file.filename,
+    caption: req.body.caption || "",
+    likes: [],
+    comments: []
+  });
+  save(POSTS_FILE, posts);
+  res.redirect("/feed.html");
+});
+
+app.get("/feed", (req, res) => {
+  const users = load(USERS_FILE);
+  const posts = load(POSTS_FILE);
+  const me = users.find(u => u.username === req.session.user);
+  res.json(posts.filter(p => p.user === me.username || me.following.includes(p.user)));
+});
+
+/* -------- LIKE / UNLIKE -------- */
+
+app.post("/like", (req, res) => {
+  const posts = load(POSTS_FILE);
+  const p = posts.find(x => x.id == req.body.id);
+  const u = req.session.user;
+
+  if (p.likes.includes(u))
+    p.likes = p.likes.filter(x => x !== u);
+  else
+    p.likes.push(u);
+
+  save(POSTS_FILE, posts);
+  res.json({ ok: true });
+});
+
+/* -------- COMMENTS -------- */
+
+app.post("/comment", (req, res) => {
+  const { id, text } = req.body;
+  const posts = load(POSTS_FILE);
+  const p = posts.find(x => x.id == id);
+  p.comments.push({ user: req.session.user, text });
+  save(POSTS_FILE, posts);
+  res.json({ ok: true });
+});
+
+/* -------- DM CHAT -------- */
+
+app.get("/dm/:u", (req, res) => {
+  const msgs = load(MSG_FILE);
+  const me = req.session.user;
+  const other = req.params.u;
+  res.json(msgs.filter(m =>
+    (m.from === me && m.to === other) ||
+    (m.from === other && m.to === me)
+  ));
+});
+
+app.post("/dm", (req, res) => {
+  const { to, text } = req.body;
+  const msgs = load(MSG_FILE);
+  msgs.push({ from: req.session.user, to, text, time: Date.now() });
+  save(MSG_FILE, msgs);
+  res.json({ ok: true });
+});
+
+app.listen(PORT, () =>
+  console.log("🚀 InstaClone running at http://localhost:" + PORT)
+);

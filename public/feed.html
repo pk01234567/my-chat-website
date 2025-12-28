@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>InstaClone Feed</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="header">
+  <h3>InstaClone</h3>
+  <input id="search" placeholder="Search users...">
+</div>
+
+<div class="container" id="feed"></div>
+
+<script>
+async function loadFeed() {
+  const res = await fetch("/feed");
+  const posts = await res.json();
+  const box = document.getElementById("feed");
+  box.innerHTML = "";
+
+  posts.forEach(p => {
+    box.innerHTML += `
+      <div class="card">
+        <b><a href="user.html?u=${p.user}">${p.user}</a></b>
+        <img class="post-img" src="${p.image}">
+        <p>${p.caption}</p>
+        <button class="btn" onclick="like(${p.id})">❤️ ${p.likes.length}</button>
+        <div id="c${p.id}">
+          ${p.comments.map(c=>`<div class="comment"><b>${c.user}:</b> ${c.text}</div>`).join("")}
+        </div>
+        <input placeholder="Add comment..." onkeydown="addComment(event,${p.id})">
+      </div>`;
+  });
+}
+
+async function like(id){
+  await fetch("/like",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});
+  loadFeed();
+}
+
+async function addComment(e,id){
+  if(e.key==="Enter"){
+    await fetch("/comment",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({id,text:e.target.value})});
+    e.target.value="";
+    loadFeed();
+  }
+}
+
+document.getElementById("search").oninput = async e => {
+  const q = e.target.value;
+  const res = await fetch("/search?q="+q);
+  const users = await res.json();
+  const box = document.getElementById("feed");
+  box.innerHTML = users.map(u=>`
+    <div class="card">
+      <a href="user.html?u=${u.username}">
+        <b>${u.username}</b> - ${u.name}
+      </a>
+    </div>`).join("");
+};
+
+loadFeed();
+</script>
+</body>
+</html>
