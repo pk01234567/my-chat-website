@@ -1,142 +1,223 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Chat Together</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: linear-gradient(135deg, #2193b0, #f77062);
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
+  <title>Private Chat</title>
+<style>
+  body{
+    margin:0;
+    font-family:Arial;
+    height:100vh;
+    background: linear-gradient(135deg, #2193b0, #f77062);
+    display:flex;
+  }
 
-    .chat-container {
-      width: 360px;
-      max-width: 95%;
-      background: #ffffff;
-      border-radius: 18px;
-      box-shadow: 0 12px 30px rgba(0,0,0,0.3);
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
+  #users{
+    width:30%;
+    background: rgba(255,255,255,0.9);
+    padding:10px;
+    overflow-y:auto;
+    border-right: 2px solid #eee;
+  }
 
-    .chat-header {
-      background: linear-gradient(135deg, #4facfe, #f093fb);
-      color: #fff;
-      padding: 16px;
-      text-align: center;
-      font-size: 20px;
-      font-weight: bold;
-    }
+  .user{
+    display:flex;
+    align-items:center;
+    padding:10px;
+    cursor:pointer;
+    border-radius:10px;
+    margin-bottom:8px;
+    background: linear-gradient(135deg, #4facfe, #f093fb);
+    color:#fff;
+    transition:0.3s;
+  }
+  .user:hover{
+    opacity:0.85;
+  }
+  .user img{
+    width:40px;
+    height:40px;
+    border-radius:50%;
+    margin-right:10px;
+    border:2px solid #fff;
+  }
 
-    .username {
-      border: none;
-      border-radius: 20px;
-      padding: 10px;
-      width: 90%;
-      margin: 10px auto;
-      outline: none;
-      text-align: center;
-      background: #eef3ff;
-    }
+  #chatBox{
+    flex:1;
+    padding:15px;
+    display:flex;
+    flex-direction:column;
+  }
 
-    .chat-box {
-      flex: 1;
-      padding: 12px;
-      overflow-y: auto;
-      background: #f5f8ff;
-    }
+  #chatBox h3{
+    color:#fff;
+    margin:0 0 10px 0;
+  }
 
-    .msg {
-      margin: 6px 0;
-      padding: 8px 12px;
-      border-radius: 14px;
-      background: linear-gradient(135deg, #dbe6ff, #ffd6f0);
-      font-size: 14px;
-      color: #333;
-    }
+  #chat{
+    flex:1;
+    overflow-y:auto;
+    background: rgba(255,255,255,0.9);
+    padding:15px;
+    border-radius:15px;
+    box-shadow:0 5px 15px rgba(0,0,0,0.2);
+  }
 
-    .msg span {
-      font-weight: bold;
-      color: #5a2d82;
-    }
+  .msg{
+    margin:6px 0;
+    padding:8px 12px;
+    border-radius:12px;
+    max-width:70%;
+    word-wrap:break-word;
+  }
 
-    .chat-input {
-      display: flex;
-      padding: 10px;
-      background: #f0f0f0;
-    }
+  .msg.me{
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    color:#fff;
+    align-self:flex-end;
+  }
 
-    .chat-input input {
-      flex: 1;
-      border: none;
-      border-radius: 20px;
-      padding: 10px;
-      outline: none;
-      margin-right: 6px;
-      background: #eef3ff;
-    }
+  .msg.other{
+    background: linear-gradient(135deg, #f093fb, #f5576c);
+    color:#fff;
+    align-self:flex-start;
+  }
 
-    .chat-input button {
-      border: none;
-      border-radius: 20px;
-      padding: 10px 18px;
-      background: linear-gradient(135deg, #4facfe, #f093fb);
-      color: #fff;
-      cursor: pointer;
-      font-weight: bold;
-    }
-
-    .chat-input button:hover {
-      opacity: 0.9;
-    }
-  </style>
+  #input{
+    display:flex;
+    margin-top:10px;
+  }
+  #input input{
+    flex:1;
+    padding:12px;
+    border-radius:25px;
+    border:none;
+    outline:none;
+  }
+  #input button{
+    margin-left:10px;
+    padding:12px 25px;
+    border-radius:25px;
+    border:none;
+    background: linear-gradient(135deg, #4facfe, #f093fb);
+    color:#fff;
+    font-weight:bold;
+    cursor:pointer;
+  }
+</style>
 </head>
 <body>
 
-<div class="chat-container">
-  <div class="chat-header">💬 Chat Together</div>
+<div id="users"></div>
 
-  <input id="user" class="username" placeholder="Enter your name">
+<div id="chatBox">
+  <div style="display:flex;align-items:center;justify-content:space-between;">
+  <div style="display:flex;align-items:center;">
+    <img id="myPhoto" src="" style="width:40px;height:40px;border-radius:50%;margin-right:10px;">
+    <h3 id="title">Select a user</h3>
+  </div>
+  <div>
+    <input type="file" id="dpInput" style="display:none" onchange="changeDP()">
+    <button onclick="dpInput.click()">Change DP</button>
+  </div>
+</div>
 
-  <div id="chat" class="chat-box"></div>
-
-  <div class="chat-input">
-    <input id="msg" placeholder="Type your message...">
+  <div id="chat"></div>
+  <div id="input">
+    <input id="text" placeholder="Type...">
     <button onclick="send()">Send</button>
   </div>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
-  const socket = io();
-  const chat = document.getElementById("chat");
+  
+  async function changeDP(){
+  const file = dpInput.files[0];
+  if(!file) return;
 
-  socket.on("oldMessages", msgs => msgs.forEach(addMsg));
-  socket.on("chatMessage", addMsg);
+  const fd = new FormData();
+  fd.append("photo", file);
+  fd.append("username", me);
 
-  function send() {
-    const user = document.getElementById("user").value;
-    const text = document.getElementById("msg").value;
-    if (user && text) {
-      socket.emit("chatMessage", { user, text });
-      document.getElementById("msg").value = "";
-    }
+  const res = await fetch("/update-photo", {
+    method: "POST",
+    body: fd
+  });
+  const d = await res.json();
+  if(d.ok){
+    myPhoto.src = d.photo;
+    alert("Profile photo updated!");
   }
+}
 
-  function addMsg(m) {
-    const div = document.createElement("div");
-    div.className = "msg";
-    div.innerHTML = `<span>${m.user}:</span> ${m.text}`;
-    chat.appendChild(div);
+const socket = io();
+let me = prompt("Enter your username after login:");
+const myPhoto = document.getElementById("myPhoto");
+myPhoto.src = "/default.png";
+
+fetch("/users")
+  .then(r => r.json())
+  .then(data => {
+    const u = data.find(x => x.username === me);
+    if (u && u.photo) {
+      myPhoto.src = u.photo;
+    }
+  });
+
+// load my photo
+myPhoto.src = "/default.png";
+
+fetch("/users").then(r=>r.json()).then(data=>{
+  const u = data.find(x=>x.username===me);
+  if(u && u.photo) myPhoto.src = u.photo;
+});
+
+let current = "";
+
+socket.emit("join", me);
+
+// load users
+fetch("/users").then(r=>r.json()).then(data=>{
+  data.filter(u=>u.username!==me).forEach(u=>{
+    const d=document.createElement("div");
+    d.className="user";
+    d.innerHTML=`<img src="${u.photo || '/default.png'}"><b>${u.username}</b>`;
+    d.onclick=()=>selectUser(u.username);
+    users.appendChild(d);
+  });
+});
+
+function selectUser(u){
+  current=u;
+  title.textContent="Chat with "+u;
+  chat.innerHTML="";
+  socket.emit("loadChat",{from:me,to:u});
+}
+
+socket.on("chatHistory", msgs=>{
+  chat.innerHTML="";
+  msgs.forEach(add);
+});
+
+socket.on("privateMessage", add);
+
+function send(){
+  if(text.value && current){
+    socket.emit("privateMessage",{from:me,to:current,text:text.value});
+    text.value="";
+  }
+}
+
+function add(m){
+  if((m.from===me && m.to===current)||(m.from===current && m.to===me)){
+    const d=document.createElement("div");
+    d.className="msg " + (m.from===me ? "me" : "other");
+    d.textContent = m.from + ": " + m.text;
+    chat.appendChild(d);
     chat.scrollTop = chat.scrollHeight;
   }
-</script>
+}
 
+</script>
 </body>
 </html>
